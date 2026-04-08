@@ -7,7 +7,7 @@ import {
   stepCountIs,
 } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { RETAIL_TOOLS } from "@/lib/tools";
+import { ANALYTIC_TOOLS } from "@/lib/tools";
 
 // Required for Edge/Node streaming depending on your setup
 export const maxDuration = 30;
@@ -17,17 +17,19 @@ export async function POST(req: Request) {
   // x. setting prompot
   const today = new Date().toISOString().slice(0, 10); // format: YYYY-MM-DD
   const systemPrompt = `Tanggal hari ini adalah ${today}.
-Kamu adalah asisten analitik untuk toko retail baju dewasa dan anak.
-Kamu punya akses ke data penjualan. Selalu tampilkan angka dalam format Rupiah jika menyebut harga/revenue.
+Anda adalah analis agribisnis Indonesia yang membantu pengguna memahami data komoditas pertanian.
 
-ATURAN PENGGUNAAN TOOL:
-1. Jika user bertanya tentang data penjualan, LANGSUNG panggil tool yang sesuai — jangan hanya narasi.
-2. Setelah mendapat data dari tool (get_top_products, query_sales_comparison, get_revenue_breakdown),
-   SELALU panggil generate_chart_config dengan data tersebut untuk membuat visualisasi chart.
-3. Pilih chart_type yang tepat: "bar" untuk perbandingan produk, "line" untuk tren waktu, "pie" untuk proporsi/persentase.
-4. Gunakan nama kolom yang BENAR dari data hasil tool untuk x_key dan y_key.
+Gunakan tools yang tersedia untuk menjawab pertanyaan analitik. Pilih tool yang paling relevan berdasarkan konteks pertanyaan, lalu interpretasikan hasilnya dalam bahasa yang mudah dipahami.
 
-Jika user bertanya di luar lingkup analitik (misal cuaca, ibu kota, dll), jawab: "Maaf, saya hanya bisa membantu dengan data penjualan."`;
+Panduan pemilihan tool:
+- Posisi harga vs permintaan pasar → analyze_price_demand_matrix
+- Kesenjangan produksi vs kebutuhan industri → analyze_supply_demand_gap
+- Ranking potensi pendapatan komoditas → analyze_revenue_index
+- Ketidakselarasan industrial vs market demand → analyze_dual_demand_misalignment
+- Kesiapan ekspor komoditas → analyze_export_readiness
+- Jika belum tahu struktur data → get_schema
+
+Jika pertanyaan di luar lingkup analitik agribisnis, jawab: "Maaf, saya hanya bisa membantu dengan analisis data komoditas pertanian."`;
   // a. Get user session
   const {
     data: { user },
@@ -82,7 +84,7 @@ Jika user bertanya di luar lingkup analitik (misal cuaca, ibu kota, dll), jawab:
   const maxTokens = parseInt(process.env.MAX_OUTPUT_TOKENS || "4096", 10);
 
   const agentTools = Object.fromEntries(
-    RETAIL_TOOLS.map((t) => [
+    ANALYTIC_TOOLS.map((t) => [
       t.name,
       tool({
         description: t.description,
@@ -93,7 +95,7 @@ Jika user bertanya di luar lingkup analitik (misal cuaca, ibu kota, dll), jawab:
   );
 
   const result = streamText({
-    model: anthropic("claude-haiku-4-5-20251001"),
+    model: anthropic("claude-haiku-4-5"),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     tools: agentTools,
@@ -106,58 +108,79 @@ Jika user bertanya di luar lingkup analitik (misal cuaca, ibu kota, dll), jawab:
 }
 
 async function executeTool(
-  name: String,
+  name: string,
   input: any,
   supabase: Awaited<ReturnType<typeof createClient>>,
 ) {
   console.log(`[tool] ${name}`, JSON.stringify(input));
   if (name === "get_schema") {
     return {
-      tables: ["sales", "products", "inventory", "categories"],
-      sales_columns: ["id", "product_id", "quantity", "revenue", "sold_at"],
+      tables: ["commodities"],
+      commodities_columns: [
+        "id",
+        "commodity_name",
+        "category",
+        "production_volume_tons",
+        "industrial_demand",
+        "market_demand",
+        "avg_price_idr_per_kg",
+        "primary_target_sector",
+      ],
     };
   }
 
-  if (name === "query_sales_comparison") {
-    const {
-      current_month,
-      previous_month,
-      category,
-      limit = 10,
-      order = "asc",
-    } = input;
-    const { data, error } = await supabase.rpc("compare_monthly_sales", {
-      p_current: current_month,
-      p_previous: previous_month,
+  if (name === "analyze_price_demand_matrix") {
+    const { category } = input;
+    const { data, error } = await supabase.rpc("analyze_price_demand_matrix", {
       p_category: category,
-      p_limit: limit,
-      p_direction: order,
     });
     if (error) throw new Error(error.message);
     return data;
   }
 
-  if (name === "get_top_products") {
-    const { period, category, metric, limit = 10 } = input;
+  if (name === "analyze_supply_demand_gap") {
+    const { risk_level } = input;
 
-    const { data, error } = await supabase.rpc("get_top_products", {
-      p_period: period,
-      p_category: category,
-      p_metric: metric,
-      p_limit: limit,
+    const { data, error } = await supabase.rpc("analyze_supply_demand_gap", {
+      p_risk_level: risk_level,
     });
 
     if (error) throw new Error(error.message);
     return data;
   }
 
-  if (name === "get_revenue_breakdown") {
-    const { period, breakdown, category = "semua" } = input;
+  if (name === "analyze_revenue_index") {
+    const { top_n, category } = input;
 
-    const { data, error } = await supabase.rpc("get_revenue_breakdown", {
-      p_period: period,
-      p_breakdown: breakdown,
+    const { data, error } = await supabase.rpc("analyze_revenue_index", {
+      p_top_n: top_n,
       p_category: category,
+    });
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  if (name === "analyze_dual_demand_misalignment") {
+    const { min_gap } = input;
+
+    const { data, error } = await supabase.rpc(
+      "analyze_dual_demand_misalignment",
+      {
+        p_min_gap: min_gap,
+      },
+    );
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  if (name === "analyze_export_readiness") {
+    const { min_score, sector_only } = input;
+
+    const { data, error } = await supabase.rpc("analyze_export_readiness", {
+      p_min_score: min_score,
+      p_sector_only: sector_only,
     });
 
     if (error) throw new Error(error.message);

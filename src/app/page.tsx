@@ -203,17 +203,17 @@ export default function Chat() {
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-b-[#ffff00] bg-white/80 px-4 md:px-6 backdrop-blur-xl z-10 sticky top-0 shadow-sm">
         <div className="flex items-center space-x-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white ring-1 ring-gray-200 shadow-sm overflow-hidden">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white ring-1 ring-gray-200 shadow-sm overflow-hidden">
             <Image
-              src="/Logo_PLN.png"
-              alt="PLN Logo"
-              width={28}
-              height={28}
+              src="/agro-life.png"
+              alt="Agro Life Logo"
+              width={44}
+              height={44}
               className="object-contain"
             />
           </div>
           <span className="font-medium text-sm text-gray-800">
-            Coal Loading and Transport Analytics
+            Agro Commodities Analytics
           </span>
         </div>
         <div className="flex items-center space-x-4">
@@ -240,7 +240,7 @@ export default function Chat() {
             </div>
             <div className="space-y-2 max-w-md">
               <h2 className="text-2xl font-semibold text-gray-900">
-                How can I help you today?
+                Apa yang bisa saya bantu?
               </h2>
               <p className="text-sm text-gray-500">
                 Note: You are limited to a configured number of interactions
@@ -253,14 +253,12 @@ export default function Chat() {
             {messages.map((m) => (
               <div
                 key={m.id}
-                className={`flex w-full px-4 py-6 md:px-0 ${
-                  m.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex w-full px-4 py-6 md:px-0 ${m.role === "user" ? "justify-end" : "justify-start"
+                  }`}
               >
                 <div
-                  className={`flex max-w-[85%] sm:max-w-2xl gap-4 ${
-                    m.role === "user" ? "flex-row-reverse" : "flex-row"
-                  }`}
+                  className={`flex max-w-[85%] sm:max-w-2xl gap-4 ${m.role === "user" ? "flex-row-reverse" : "flex-row"
+                    }`}
                 >
                   <div className="shrink-0 flex items-start">
                     {m.role === "user" ? (
@@ -274,11 +272,10 @@ export default function Chat() {
                     )}
                   </div>
                   <div
-                    className={`max-w-none text-[15px] leading-relaxed ${
-                      m.role === "user"
+                    className={`max-w-none text-[15px] leading-relaxed ${m.role === "user"
                         ? "whitespace-pre-wrap bg-white px-5 py-3.5 rounded-2xl rounded-tr-sm text-gray-800 shadow-sm border border-gray-100"
                         : "text-gray-800 pt-1 prose prose-sm prose-gray max-w-none"
-                    }`}
+                      }`}
                   >
                     {m.role === "user" ? (
                       m.parts

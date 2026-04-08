@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Coal Loading Analytics",
-  description: "Analitycs on coal loading and transport",
+  title: "Agro Analytics",
+  description: "Analitycs on agro commodities",
 };
 
 export default function RootLayout({
