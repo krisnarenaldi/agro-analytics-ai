@@ -55,6 +55,11 @@ Jika pertanyaan di luar lingkup analitik agribisnis, jawab: "Maaf, saya hanya bi
     .eq("user_id", user.id)
     .gte("created_at", todayStart.toISOString());
 
+  if (usageError) {
+    console.error("[usage_logs] Failed to fetch usage:", usageError.message);
+    return new Response("Failed to check usage limit.", { status: 500 });
+  }
+
   const currentChatCount = count || 0;
 
   if (currentChatCount >= maxChats) {
@@ -66,24 +71,34 @@ Jika pertanyaan di luar lingkup analitik agribisnis, jawab: "Maaf, saya hanya bi
 
   // Record usage and create/update chat
   if (!activeChatId) {
+    const lastMessage = messages[messages.length - 1];
+    const titleText: string =
+      lastMessage.parts?.find((p: { type: string }) => p.type === "text")
+        ?.text ?? "New Chat";
+
     const { data: chatData, error: chatError } = await supabase
       .from("chats")
       .insert({
         user_id: user.id,
-        title: messages[messages.length - 1].content.slice(0, 50) || "New Chat",
+        title: titleText.slice(0, 50) || "New Chat",
       })
       .select()
       .single();
-    
+
+    if (chatError) {
+      console.error("[chats] Failed to create chat:", chatError.message);
+      return new Response("Failed to create chat.", { status: 500 });
+    }
+
     if (chatData) activeChatId = chatData.id;
   }
 
-  // Save user message
+  // Save user message (store parts array as JSONB for consistency)
   const userMessage = messages[messages.length - 1];
   await supabase.from("messages").insert({
     chat_id: activeChatId,
     role: userMessage.role,
-    content: userMessage.content,
+    content: userMessage.parts,
   });
 
   // 3. Initialize AI SDK Anthropics instance with specific API key handling if needed
@@ -115,12 +130,12 @@ Jika pertanyaan di luar lingkup analitik agribisnis, jawab: "Maaf, saya hanya bi
     tools: agentTools,
     stopWhen: stepCountIs(5),
     maxOutputTokens: maxTokens,
-    onFinish: async ({ text, toolResults }) => {
-      // Save assistant message and tool results
+    onFinish: async ({ text }) => {
+      // Save assistant message as parts array (consistent JSONB format)
       await supabase.from("messages").insert({
         chat_id: activeChatId,
         role: "assistant",
-        content: text || "", // Simplified for now, should handle parts correctly
+        content: [{ type: "text", text: text || "" }],
       });
     },
   });
