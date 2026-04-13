@@ -113,5 +113,23 @@ export const ANALYTIC_TOOLS = [
     }
   },
 
-
+  {
+    name: "generate_chart_config",
+    description:
+      "Buat konfigurasi chart untuk divisualisasikan di frontend. Panggil SETELAH mendapat data analitik.",
+    input_schema: {
+      type: "object",
+      properties: {
+        chart_type: { type: "string", enum: ["bar", "line", "pie"] },
+        data: {
+          type: "array",
+          description: "Array data dari query sebelumnya.",
+        },
+        title: { type: "string" },
+        x_key: { type: "string" },
+        y_key: { type: "string" },
+      },
+      required: ["chart_type", "data", "title"],
+    },
+  },
 ];

@@ -39,14 +39,13 @@ Jika pertanyaan di luar lingkup analitik agribisnis, jawab: "Maaf, saya hanya bi
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { messages } = await req.json();
+  const { messages, chatId } = await req.json();
 
-  // b. Cek limit usage
+  let activeChatId = chatId;
 
-  // // 1. Check Usage Config Limit
   const maxChats = parseInt(process.env.MAX_CHATS_PER_USER || "5", 10);
 
-  // // 2. Query Usage from Supabase (count rows in usage_logs) — hanya hari ini
+  // 2. Query Usage from Supabase (count rows in usage_logs) — hanya hari ini
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -65,20 +64,35 @@ Jika pertanyaan di luar lingkup analitik agribisnis, jawab: "Maaf, saya hanya bi
     );
   }
 
+  // Record usage and create/update chat
+  if (!activeChatId) {
+    const { data: chatData, error: chatError } = await supabase
+      .from("chats")
+      .insert({
+        user_id: user.id,
+        title: messages[messages.length - 1].content.slice(0, 50) || "New Chat",
+      })
+      .select()
+      .single();
+    
+    if (chatData) activeChatId = chatData.id;
+  }
+
+  // Save user message
+  const userMessage = messages[messages.length - 1];
+  await supabase.from("messages").insert({
+    chat_id: activeChatId,
+    role: userMessage.role,
+    content: userMessage.content,
+  });
+
   // 3. Initialize AI SDK Anthropics instance with specific API key handling if needed
   const anthropic = createAnthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
   });
 
   // 4. Record the Usage (Insert into usage_logs)
-  const { error: insertError } = await supabase
-    .from("usage_logs")
-    .insert({ user_id: user.id });
-
-  if (insertError) {
-    console.error("Failed to insert usage log", insertError);
-    // Log the error but continue
-  }
+  await supabase.from("usage_logs").insert({ user_id: user.id });
 
   // 5. Build tools dari RETAIL_TOOLS + executeTool (agentic loop)
   const maxTokens = parseInt(process.env.MAX_OUTPUT_TOKENS || "4096", 10);
@@ -101,6 +115,14 @@ Jika pertanyaan di luar lingkup analitik agribisnis, jawab: "Maaf, saya hanya bi
     tools: agentTools,
     stopWhen: stepCountIs(5),
     maxOutputTokens: maxTokens,
+    onFinish: async ({ text, toolResults }) => {
+      // Save assistant message and tool results
+      await supabase.from("messages").insert({
+        chat_id: activeChatId,
+        role: "assistant",
+        content: text || "", // Simplified for now, should handle parts correctly
+      });
+    },
   });
 
   // 6. Return UI Message Stream Response
