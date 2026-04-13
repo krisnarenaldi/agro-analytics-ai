@@ -8,7 +8,7 @@ import {
 } from "ai";
 import { createClient } from "@/utils/supabase/client";
 import { useEffect, useState, useRef } from "react";
-import { LogOut, Send, Bot, User, Sparkles, AlertCircle, Plus, MessageSquare, Menu, X } from "lucide-react";
+import { LogOut, Send, Bot, User, Sparkles, AlertCircle, Plus, MessageSquare, Menu, X, PanelLeft } from "lucide-react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -130,7 +130,7 @@ export default function Chat() {
   const [limitExceeded, setLimitExceeded] = useState(false);
   const [limitMessage, setLimitMessage] = useState("");
   const [inputValue, setInputValue] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [chats, setChats] = useState<{ id: string; title: string; created_at: string }[]>([]);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
@@ -251,11 +251,16 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-[#F9FAFB] text-gray-900 font-sans selection:bg-gray-200 overflow-hidden">
-      {/* Sidebar - Desktop */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex flex-col h-full">
+    <div className="flex h-screen w-full bg-[#F9FAFB] text-gray-900 font-sans selection:bg-gray-200 overflow-hidden relative">
+      {/* Sidebar - Desktop & Mobile */}
+      <aside 
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-200 transition-all duration-300 ease-in-out lg:relative ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:w-0 lg:border-none"
+        }`}
+      >
+        <div className={`flex flex-col h-full w-72 transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            {/*
             <button
               onClick={handleNewChat}
               className="flex items-center space-x-2 w-full px-4 py-2.5 bg-[#00aff0] text-white rounded-xl font-medium text-sm hover:bg-[#009bd4] transition-colors shadow-sm"
@@ -266,6 +271,7 @@ export default function Chat() {
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
               <X className="h-5 w-5" />
             </button>
+            */}
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -318,10 +324,15 @@ export default function Chat() {
         <header className="flex h-16 shrink-0 items-center justify-between border-b-2 border-b-[#ffff00] bg-white/80 px-4 md:px-6 backdrop-blur-xl z-10 sticky top-0 shadow-sm">
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center group"
+              title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
-              <Menu className="h-5 w-5" />
+              {sidebarOpen ? (
+                <PanelLeft className="h-5 w-5 text-gray-500 group-hover:text-[#00aff0]" />
+              ) : (
+                <Menu className="h-5 w-5 text-gray-500 group-hover:text-[#00aff0]" />
+              )}
             </button>
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white ring-1 ring-gray-200 shadow-sm overflow-hidden">
               <Image
